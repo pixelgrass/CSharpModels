@@ -14,7 +14,17 @@ namespace CSharpModels
 		protected Task<T> Perform<T>(Func<T> func)
 		{
 			var tcs = new TaskCompletionSource<T>();			
-			_actionBlock.Post(()=>tcs.SetResult(func()));
+			_actionBlock.Post(()=>
+			{
+				try
+				{
+					tcs.SetResult(func());
+				}
+				catch (Exception e)
+				{
+					tcs.SetException(e);
+				}
+			});
 			return tcs.Task;
 		}
 		protected Task Perform(Action action)
@@ -22,8 +32,15 @@ namespace CSharpModels
 			var tcs = new TaskCompletionSource<object>();
 			_actionBlock.Post(() =>
 			{
-				action();
-				tcs.SetResult(null);
+				try
+				{
+					action();
+					tcs.SetResult(null);
+				}
+				catch(Exception e)
+				{
+					tcs.SetException(e);
+				}				
 			});
 			return tcs.Task;
 		}

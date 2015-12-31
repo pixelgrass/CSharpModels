@@ -49,5 +49,53 @@ namespace CSharpModelsTest
 			Assert.IsTrue(account.Withdrawl(40).Result);
 			Assert.AreEqual(0, account.GetBallance().Result);
 		}
+
+		[TestMethod]
+		public void BankAccountTransferTest()
+		{
+			var accountA = new BankAccountActor();
+			var accountB = new BankAccountActor();
+			accountA.Deposit(100);
+			accountA.Transfer(25, accountB);
+			Assert.AreEqual(75, accountA.GetBallance().Result);
+			Assert.AreEqual(25, accountB.GetBallance().Result);
+		}
+
+		[TestMethod]
+		public void ErrorHandlingTest()
+		{
+			var errorActor = new ErrorExampleActor();
+			var task = errorActor.ThrowAnError();
+			AggregateException ex = null;
+			try
+			{
+				task.Wait(5000);
+			}
+			catch (AggregateException aggEx)
+			{
+				ex = aggEx;
+			}
+			Assert.IsNotNull(ex);
+			Assert.IsInstanceOfType(ex.InnerExceptions[0], typeof(InvalidProgramException));
+		}
+
+		[TestMethod]
+		public void ErrorHandlingTestReturnValueMethod()
+		{
+			var errorActor = new ErrorExampleActor();
+			var task = errorActor.MethodWithReturnThrowsAnError();
+			AggregateException ex = null;
+			try
+			{
+				task.Result.ToString();
+			}
+			catch (AggregateException aggEx)
+			{
+				ex = aggEx;
+			}
+			Assert.IsNotNull(ex);
+			Assert.IsInstanceOfType(ex.InnerExceptions[0], typeof(InvalidProgramException));
+			Assert.AreEqual(TaskStatus.Faulted, task.Status);
+		}
 	}
 }
