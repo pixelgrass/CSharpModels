@@ -35,5 +35,19 @@ namespace CSharpModelsTest
 			t.Wait(5000);
 			Assert.IsTrue(t.Result);
 		}
+
+		[TestMethod]
+		public void BankAccountTest()
+		{
+			var account = new BankAccountActor();
+			account.Deposit(10);
+			Assert.IsFalse(account.Withdrawl(20).Result);
+			Assert.AreEqual(10, account.GetBallance().Result);
+			account.Deposit(10);
+			account.Deposit(10);
+			account.Deposit(10);
+			Assert.IsTrue(account.Withdrawl(40).Result);
+			Assert.AreEqual(0, account.GetBallance().Result);
+		}
 	}
 }

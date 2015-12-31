@@ -11,13 +11,13 @@ namespace CSharpModels
 		{
 			_actionBlock = new ActionBlock<Action>(action => action());
 		}
-		protected Task<T> Schedule<T>(Func<T> func)
+		protected Task<T> Perform<T>(Func<T> func)
 		{
 			var tcs = new TaskCompletionSource<T>();			
 			_actionBlock.Post(()=>tcs.SetResult(func()));
 			return tcs.Task;
 		}
-		protected Task Schedule(Action action)
+		protected Task Perform(Action action)
 		{
 			var tcs = new TaskCompletionSource<object>();
 			_actionBlock.Post(() =>

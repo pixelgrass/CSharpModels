@@ -54,6 +54,7 @@
     <Compile Include="TrialModels\ActorB.cs" />
     <Compile Include="ActorTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TrialModels\BankAccountActor.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Models\CSharpModels.csproj">

@@ -16,7 +16,7 @@ namespace CSharpModelsTest.TrialModels
 				return null;
 			}
 
-			Schedule(() =>
+			Perform(() =>
 			{
 				TestMe();
 			});

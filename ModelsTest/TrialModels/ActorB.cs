@@ -9,7 +9,7 @@ namespace CSharpModelsTest.TrialModels
 		private int counter = 0;
 		public Task<int> Add(int a, int b)
 		{
-			return Schedule(() =>
+			return Perform(() =>
 			{
 				return a + b;
 			});
@@ -17,12 +17,12 @@ namespace CSharpModelsTest.TrialModels
 
 		public Task Add(int a)
 		{
-			return Schedule(() => { counter += a; });
+			return Perform(() => { counter += a; });
 		}
 		int last = -1;
 		public Task Verify(int j)
 		{
-			return Schedule(() => {
+			return Perform(() => {
 				if (j <= last)
 				{
 					throw new InvalidOperationException("Out of Sequence!");
@@ -33,7 +33,7 @@ namespace CSharpModelsTest.TrialModels
 
 		public Task<int> GetCounter()
 		{
-			return Schedule(() =>
+			return Perform(() =>
 			{
 				return counter;
 			});
@@ -41,7 +41,7 @@ namespace CSharpModelsTest.TrialModels
 
 		public Task DoNothing()
 		{
-			return Schedule(() => { });
+			return Perform(() => { });
 		}
 	}
 
