@@ -29,20 +29,11 @@ namespace CSharpModels
 		}
 		protected Task Perform(Action action)
 		{
-			var tcs = new TaskCompletionSource<object>();
-			_actionBlock.Post(() =>
+			return Perform<object>(() => 
 			{
-				try
-				{
-					action();
-					tcs.SetResult(null);
-				}
-				catch(Exception e)
-				{
-					tcs.SetException(e);
-				}				
-			});
-			return tcs.Task;
+				action();
+				return null;
+			});			
 		}
 	}
 }
