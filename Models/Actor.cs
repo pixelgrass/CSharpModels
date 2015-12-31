@@ -14,17 +14,7 @@ namespace CSharpModels
 		protected Task<T> Schedule<T>(Func<T> func)
 		{
 			var tcs = new TaskCompletionSource<T>();			
-			_actionBlock.Post(()=>
-			{
-				try
-				{
-					tcs.SetResult(func());
-				}
-				catch (Exception e)
-				{
-					tcs.SetException(e);
-				}
-			});
+			_actionBlock.Post(()=>tcs.SetResult(func()));
 			return tcs.Task;
 		}
 		protected Task Schedule(Action action)
@@ -32,15 +22,8 @@ namespace CSharpModels
 			var tcs = new TaskCompletionSource<object>();
 			_actionBlock.Post(() =>
 			{
-				try
-				{
-					action();
-					tcs.SetResult(null);
-				}
-				catch (Exception e)
-				{
-					tcs.SetException(e);
-				}				
+				action();
+				tcs.SetResult(null);
 			});
 			return tcs.Task;
 		}
