@@ -20,7 +20,7 @@ namespace CSharpModels
 
 		protected Actor()
 		{			
-			_actionBlock = new ActionBlock<Action>(action => action(), new ExecutionDataflowBlockOptions { BoundedCapacity = DataflowBlockOptions.Unbounded,MaxDegreeOfParallelism = 1,MaxMessagesPerTask = 1});			
+			_actionBlock = new ActionBlock<Action>(action => action(), new ExecutionDataflowBlockOptions { BoundedCapacity = DataflowBlockOptions.Unbounded,MaxDegreeOfParallelism = 1});			
 		}
 
 		protected Actor(CancellationToken cancellationToken) :this()
