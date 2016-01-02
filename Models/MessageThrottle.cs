@@ -27,11 +27,18 @@ namespace CSharpModels
 			_messageQueue = new Queue<T>();
 		}
 
+		/// <summary>
+		/// enqueue messages for sending
+		/// </summary>
+		/// <param name="message">the message to enqueue</param>
 		public void Post(T message)
 		{
 			PerformLight(() => _messageQueue.Enqueue(message));
 		}
 
+		/// <summary>
+		/// start sending enqueued messages
+		/// </summary>
 		public void Start()
 		{
 			PerformLight(() =>
@@ -57,6 +64,9 @@ namespace CSharpModels
 			}
 		}
 
+		/// <summary>
+		/// Stop sending messages - existing messagese will still be queued . new messages may still be posted.
+		/// </summary>
 		public void Stop()
 		{
 			PerformLight(() =>
