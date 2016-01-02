@@ -5,12 +5,16 @@ namespace CSharpModelsTest.TrialModels
 {
 	public class ActorA : Actor
 	{
-		TaskCompletionSource<bool> _tcs = new TaskCompletionSource<bool>();
-		int count = 0;
+		private readonly TaskCompletionSource<bool> _tcs = new TaskCompletionSource<bool>();
+		private int _count;
+		/// <summary>
+		/// This is a very bad implimentation and should not be used as an example - just an experiment
+		/// </summary>
+		/// <returns></returns>
 		public Task<bool> TestMe()
 		{
-			count++;
-			if (count == 100000)
+			_count++;
+			if (_count == 100000)
 			{
 				_tcs.SetResult(true);
 				return null;
