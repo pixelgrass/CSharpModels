@@ -35,7 +35,7 @@ namespace CSharpModels
 		/// <summary>
 		/// Signal the Actor to complete all performances and stop accepting new requests
 		/// </summary>
-		public void Complete()
+		public virtual void Complete()
 		{
 			_actionBlock.Complete();
 		}

@@ -11,13 +11,14 @@ namespace CSharpModels
 	/// <typeparam name="T">The message type to enqueue</typeparam>
 	public class MessageThrottle<T> : Actor
 	{
-		private readonly int _messagesPerTick;
-		private readonly int _tickFrequencyMilliseconds;
-		private readonly ITargetBlock<T> _target;
+		private int _messagesPerTick;
+		private volatile int _tickFrequencyMilliseconds;
+		private ITargetBlock<T> _target;
 		private readonly Queue<T> _messageQueue;		
 
 		private Task _messagePump;
 		private bool _isActive;
+		private bool _isCompleting;
 
 		public MessageThrottle(ITargetBlock<T> target, int messagePerTick, int tickFrequencyMilliseconds)
 		{
@@ -32,8 +33,20 @@ namespace CSharpModels
 		/// </summary>
 		/// <param name="message">the message to enqueue</param>
 		public void Post(T message)
-		{
+		{			
 			PerformLight(() => _messageQueue.Enqueue(message));
+		}
+
+		public override void Complete()
+		{
+			PerformLight(() =>
+			{
+				_isCompleting = true;
+				if (!_isActive)
+				{
+					base.Complete();
+				}
+			});
 		}
 
 		/// <summary>
@@ -43,25 +56,13 @@ namespace CSharpModels
 		{
 			PerformLight(() =>
 			{
-				if (!_isActive)
+				if (_isActive || _isCompleting)
 				{
-					_isActive = true;
-					_messagePump = MessageTimer();
+					return;
 				}
+				_isActive = true;
+				_messagePump = MessageTimer();
 			});
-		}
-
-		private async Task MessageTimer()
-		{
-			while (_isActive)
-			{
-				await SendMessages();
-				var frequency = _tickFrequencyMilliseconds;
-				if (frequency > 0)
-				{
-					await Task.Delay(_tickFrequencyMilliseconds);
-				}
-			}
 		}
 
 		/// <summary>
@@ -74,7 +75,50 @@ namespace CSharpModels
 				_isActive = false;
 				_messagePump.Wait();
 				_messagePump = null;
+				if (_isCompleting)
+				{
+					base.Complete();
+				}
 			});
+		}
+		/// <summary>
+		/// set how often to burst messages
+		/// </summary>
+		/// <param name="tickFrequencyMilliseconds">minimum time between bursts</param>
+		public void SetFrequency(int tickFrequencyMilliseconds)
+		{
+			_tickFrequencyMilliseconds = tickFrequencyMilliseconds;
+		}
+
+		/// <summary>
+		/// sets how many messages to send each burst
+		/// </summary>
+		/// <param name="messagesPerTick">number of messages to send each burst</param>
+		public void SetMessagesPerTick(int messagesPerTick)
+		{
+			PerformLight(()=> { _messagesPerTick = messagesPerTick; });
+		}
+
+		/// <summary>
+		/// change the message target
+		/// </summary>
+		/// <param name="target">where to send messages</param>
+		public void SetTarget(ITargetBlock<T> target)
+		{
+			PerformLight(()=> { _target = target; });
+		}
+
+		private async Task MessageTimer()
+		{
+			while (_isActive && (Completion.Status != TaskStatus.RanToCompletion))
+			{
+				await SendMessages();
+				var frequency = _tickFrequencyMilliseconds;
+				if (frequency > 0)
+				{
+					await Task.Delay(frequency);
+				}
+			}
 		}
 
 		private Task SendMessages()
@@ -91,7 +135,11 @@ namespace CSharpModels
 					{
 						_target.Post(_messageQueue.Dequeue());
 					}
-				}				
+				}
+				if (_isCompleting && _messageQueue.Count == 0)
+				{
+					base.Complete();
+				}			
 			});
 		}
 	}
