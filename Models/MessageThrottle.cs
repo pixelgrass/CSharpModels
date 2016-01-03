@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
@@ -11,21 +13,24 @@ namespace CSharpModels
 	/// <typeparam name="T">The message type to enqueue</typeparam>
 	public class MessageThrottle<T> : Actor
 	{
-		private int _messagesPerTick;
+		private int _burstSize;
 		private volatile int _tickFrequencyMilliseconds;
 		private ITargetBlock<T> _target;
-		private readonly Queue<T> _messageQueue;		
-
+		private readonly Queue<T> _incomingQueue;
+		private readonly List<T> _outgoingBuffer;
+		private Func<T, T, bool> _compareFunc;
+		private bool _isRemoveDuplicateMessagesEnabled;
 		private Task _messagePump;
 		private bool _isActive;
 		private bool _isCompleting;
 
-		public MessageThrottle(ITargetBlock<T> target, int messagePerTick, int tickFrequencyMilliseconds)
+		public MessageThrottle(ITargetBlock<T> target, int burstSize, int tickFrequencyMilliseconds)
 		{
 			_target = target;
-			_messagesPerTick = messagePerTick;
+			_burstSize = burstSize;
 			_tickFrequencyMilliseconds = tickFrequencyMilliseconds;
-			_messageQueue = new Queue<T>();
+			_incomingQueue = new Queue<T>();
+			_outgoingBuffer = new List<T>(_burstSize);
 		}
 
 		/// <summary>
@@ -34,7 +39,7 @@ namespace CSharpModels
 		/// <param name="message">the message to enqueue</param>
 		public void Post(T message)
 		{			
-			PerformLight(() => _messageQueue.Enqueue(message));
+			PerformLight(() => _incomingQueue.Enqueue(message));
 		}
 
 		public override void Complete()
@@ -93,10 +98,28 @@ namespace CSharpModels
 		/// <summary>
 		/// sets how many messages to send each burst
 		/// </summary>
-		/// <param name="messagesPerTick">number of messages to send each burst</param>
-		public void SetMessagesPerTick(int messagesPerTick)
+		/// <param name="burstSize">number of messages to send each burst</param>
+		public void SetBurstSize(int burstSize)
 		{
-			PerformLight(()=> { _messagesPerTick = messagesPerTick; });
+			PerformLight(() =>
+			{
+				_burstSize = burstSize;
+				_outgoingBuffer.Capacity = _burstSize;
+			});
+		}
+
+		/// <summary>
+		/// when enabled processes the message queue for at least the burst size or at most thet entire queue in an attempt to send the burst size of messages.
+		/// </summary>
+		/// <param name="isRemoveDuplicateMessagesEnabled">dont sent messages identifed as duplicate by the comparison function (within the burst range).</param>
+		/// <param name="comparisonFunction">function used to compare messages</param>
+		public void SetDuplicateMessageOptions(bool isRemoveDuplicateMessagesEnabled, Func<T, T, bool> comparisonFunction )
+		{
+			PerformLight(() =>
+			{
+				_isRemoveDuplicateMessagesEnabled = isRemoveDuplicateMessagesEnabled;
+				_compareFunc = comparisonFunction;
+			});
 		}
 
 		/// <summary>
@@ -131,12 +154,24 @@ namespace CSharpModels
 				}
 				if (null != _target)
 				{
-					for (var i = 0; (i < _messagesPerTick) && (_messageQueue.Count > 0); i++)
+					while ((_outgoingBuffer.Count < _burstSize) && (_incomingQueue.Count > 0))
 					{
-						_target.Post(_messageQueue.Dequeue());
+						var message = _incomingQueue.Dequeue();
+						if (!_isRemoveDuplicateMessagesEnabled || 
+						(_isRemoveDuplicateMessagesEnabled &&
+						!_outgoingBuffer.Any(m => _compareFunc(m,message))))
+						{
+							_outgoingBuffer.Add(message);
+						}						
 					}
+					var bufferSize = _outgoingBuffer.Count;
+					for (var i = 0; i < bufferSize; i++)
+					{
+						_target.Post(_outgoingBuffer[i]);
+					}
+					_outgoingBuffer.Clear();
 				}
-				if (_isCompleting && _messageQueue.Count == 0)
+				if (_isCompleting && _incomingQueue.Count == 0)
 				{
 					base.Complete();
 				}			

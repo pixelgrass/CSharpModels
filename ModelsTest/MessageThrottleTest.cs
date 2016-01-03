@@ -8,13 +8,71 @@ namespace CSharpModelsTest
 	[TestClass]
 	public class MessageThrottleTest
 	{
+		/// <summary>
+		/// because only 1 message will come out the comparitor processes the entire queue looking for the next unique message. (which it never finds)
+		/// </summary>
+		[TestMethod]
+		public void ThrottleExcludeDuplicateMessagesTest()
+		{
+			var count = 0;
+			var actionBlock = new ActionBlock<string>(s =>
+			{
+				count++;
+			});
+			var messageThrottle = new MessageThrottle<string>(actionBlock, 2, 100);
+			messageThrottle.SetDuplicateMessageOptions(true, (s, s1) => s.Equals(s1));			
+			for (var i = 0; i < 6; i++)
+			{
+				messageThrottle.Post("test");
+			}
+			messageThrottle.Start();
+			messageThrottle.Complete();
+			messageThrottle.Completion.Wait(5000);
+			actionBlock.Complete();
+			actionBlock.Completion.Wait(5000);
+			Assert.AreEqual(1, count);
+		}
+
+		/// <summary>
+		/// Message burst size increased to 50 to ensure processing the entire queue and removing any duplicate messages over the range
+		/// </summary>
+		[TestMethod]
+		public void ThrottleExcludeDuplicateMessagesTest2()
+		{
+			var count = 0;
+			var actionBlock = new ActionBlock<string>(s =>
+			{
+				count++;
+			});
+			var messageThrottle = new MessageThrottle<string>(actionBlock, 50, 100);
+			messageThrottle.SetDuplicateMessageOptions(true, (s, s1) => s.Equals(s1));
+			for (var i = 0; i < 6; i++)
+			{
+				messageThrottle.Post("test" + i);
+			}
+			for (var i = 0; i < 6; i++)
+			{
+				messageThrottle.Post("test" + i);
+			}
+			for (var i = 0; i < 6; i++)
+			{
+				messageThrottle.Post("test" + i);
+			}
+			messageThrottle.Start();
+			messageThrottle.Complete();
+			messageThrottle.Completion.Wait(5000);
+			actionBlock.Complete();
+			actionBlock.Completion.Wait(5000);
+			Assert.AreEqual(6, count);
+		}
+
 		[TestMethod]
 		public void ThrottleTest()
 		{
 			var count = 0;
 			var actionBlock = new ActionBlock<string>(s =>
 			{
-				count ++;
+				count ++;				
 			});
 			var messageThrottle = new MessageThrottle<string>(actionBlock,2,100);
 			messageThrottle.Start();
@@ -34,6 +92,8 @@ namespace CSharpModelsTest
 			messageThrottle.Start();
 			messageThrottle.Complete();
 			messageThrottle.Completion.Wait(5000);
+			actionBlock.Complete();
+			actionBlock.Completion.Wait(5000);
 			Assert.AreEqual(6, count);
 		}
 
@@ -60,7 +120,7 @@ namespace CSharpModelsTest
 			}
 			Task.Delay(100).Wait(5000);			
 			Assert.AreNotEqual(12, count);
-			messageThrottle.SetMessagesPerTick(100);
+			messageThrottle.SetBurstSize(100);
 			messageThrottle.SetFrequency(10);
 			for (var i = 0; i < 6; i++)
 			{
@@ -69,6 +129,8 @@ namespace CSharpModelsTest
 			
 			messageThrottle.Complete();
 			messageThrottle.Completion.Wait(5000);
+			actionBlock.Complete();
+			actionBlock.Completion.Wait(5000);
 			Assert.AreEqual(18,count);
 		}
 
@@ -97,7 +159,9 @@ namespace CSharpModelsTest
 			Task.Delay(50).Wait(5000);
 			messageThrottle.SetTarget(actionBlock2);
 			messageThrottle.Complete();
-			messageThrottle.Completion.Wait(5000);			
+			messageThrottle.Completion.Wait(5000);
+			actionBlock.Complete();
+			actionBlock.Completion.Wait(5000);
 			Assert.AreEqual(10, count+count2);			
 		}
 	}
